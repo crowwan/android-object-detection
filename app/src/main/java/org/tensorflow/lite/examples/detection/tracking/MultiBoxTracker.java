@@ -25,6 +25,7 @@ import android.graphics.Paint.Join;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 import android.util.TypedValue;
 import java.util.LinkedList;
@@ -144,15 +145,16 @@ public class MultiBoxTracker {
 
       float cornerSize = Math.min(trackedPos.width(), trackedPos.height()) / 8.0f;
       canvas.drawRoundRect(trackedPos, cornerSize, cornerSize, boxPaint);
-
+      Log.d("location",trackedPos.toString());
+//      canvas.drawRect(location, paint);
       String labelString =
               !TextUtils.isEmpty(recognition.title)
                       ? String.format("%s %.2f", recognition.title, (100 * recognition.detectionConfidence))
                       : String.format("%.2f", (100 * recognition.detectionConfidence));
-      //            borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.top,
-      // labelString);
-      borderedText.drawText(
-              canvas, trackedPos.left + cornerSize, trackedPos.top, labelString + "%", boxPaint);
+                  borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.top,
+       labelString);
+//      borderedText.drawText(
+//              canvas, trackedPos.left + cornerSize, trackedPos.top, labelString + "%", boxPaint);
     }
   }
 

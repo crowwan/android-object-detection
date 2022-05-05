@@ -14,6 +14,9 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.TextUtils;
+import android.util.Log;
+import android.util.TypedValue;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -25,14 +28,16 @@ import org.tensorflow.lite.examples.detection.env.Utils;
 import org.tensorflow.lite.examples.detection.tflite.Classifier;
 import org.tensorflow.lite.examples.detection.tflite.YoloV5Classifier;
 import org.tensorflow.lite.examples.detection.tracking.MultiBoxTracker;
-
+import org.tensorflow.lite.examples.detection.env.BorderedText;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+//import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
+    public static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.5f;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,7 +87,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TF_OD_API_MODEL_FILE = "best-fp16.tflite";
 
-    private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/coco.txt";
+    private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/btest.txt";
+
 
     // Minimum detection confidence to track a detection.
     private static final boolean MAINTAIN_ASPECT = true;
@@ -117,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
         frameToCropTransform.invert(cropToFrameTransform);
 
         tracker = new MultiBoxTracker(this);
+        Log.d("box","initbox");
         trackingOverlay = findViewById(R.id.tracking_overlay);
         trackingOverlay.addCallback(
                 canvas -> tracker.draw(canvas));
@@ -124,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
         tracker.setFrameConfiguration(TF_OD_API_INPUT_SIZE, TF_OD_API_INPUT_SIZE, sensorOrientation);
 
         try {
+            Log.d("box","initbox");
             detector =
                     YoloV5Classifier.create(
                             getAssets(),
@@ -145,24 +153,51 @@ public class MainActivity extends AppCompatActivity {
     private void handleResult(Bitmap bitmap, List<Classifier.Recognition> results) {
         final Canvas canvas = new Canvas(bitmap);
         final Paint paint = new Paint();
-        paint.setColor(Color.RED);
+        final Paint textPaint = new Paint();
+//        Log.d("result",results.get(0).toString());
+//        paint.setColor(Color.RED);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(1.0f);
 
+        textPaint.setTextSize(20);
+        textPaint.setColor(Color.BLUE);
+        textPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+
+        textPaint.setAntiAlias(false);
+        textPaint.setAlpha(255);
         final List<Classifier.Recognition> mappedRecognitions =
                 new LinkedList<Classifier.Recognition>();
 
-        for (final Classifier.Recognition result : results) {
+//        for (final Classifier.Recognition result : results) {
+        for(int i =0 ;i<results.size();i++){
+            final Classifier.Recognition result = results.get(i);
             final RectF location = result.getLocation();
+            Log.d("l", String.valueOf(location));
             if (location != null && result.getConfidence() >= MINIMUM_CONFIDENCE_TF_OD_API) {
+                Log.d("title",result.getTitle());
+                if(result.getTitle().equals("rhizopus")){
+                    paint.setColor(Color.RED);
+                }else if(result.getTitle().equals("세균잎마름병") ){
+                    paint.setColor(Color.BLUE);
+                }else if(result.getTitle().equals("흰가루병")){
+                    paint.setColor(Color.GREEN);
+                }else{
+                    paint.setColor(Color.CYAN);
+                }
                 canvas.drawRect(location, paint);
+                String labelString =
+                        !TextUtils.isEmpty(result.getTitle())
+                                ? String.format("%s %.2f", result.getTitle(), (100 * result.getConfidence()))
+                                : String.format("%.2f", (100 * result.getConfidence()));
+                canvas.drawText(labelString, location.left,location.top,textPaint);
 //                cropToFrameTransform.mapRect(location);
 //
 //                result.setLocation(location);
+//                Log.d("2",result.getLocation().toString());
 //                mappedRecognitions.add(result);
             }
         }
-//        tracker.trackResults(mappedRecognitions, new Random().nextInt());
+//       tracker.trackResults(mappedRecognitions, 1);
 //        trackingOverlay.postInvalidate();
         imageView.setImageBitmap(bitmap);
     }

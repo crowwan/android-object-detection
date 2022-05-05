@@ -142,6 +142,7 @@ public class YoloV5Classifier implements Classifier {
 
         int[] shape = d.tfLite.getOutputTensor(0).shape();
         int numClass = shape[shape.length - 1] - 5;
+        Log.d("class", String.valueOf(numClass));
         d.numClass = numClass;
         d.outData = ByteBuffer.allocateDirect(d.output_box * (numClass + 5) * numBytesPerChannel);
         d.outData.order(ByteOrder.nativeOrder());
@@ -313,7 +314,7 @@ public class YoloV5Classifier implements Classifier {
         return nmsList;
     }
 
-    protected float mNmsThresh = 0.6f;
+    protected float mNmsThresh = 0.2f;
 
     protected float box_iou(RectF a, RectF b) {
         return box_intersection(a, b) / box_union(a, b);
@@ -417,13 +418,14 @@ public class YoloV5Classifier implements Classifier {
             int detectedClass = -1;
             float maxClass = 0;
 
-            final float[] classes = new float[labels.size()];
-            for (int c = 0; c < labels.size(); ++c) {
+            final float[] classes = new float[numClass];
+            for (int c = 0; c < numClass; ++c) {
                 classes[c] = out[0][i][5 + c];
             }
 
-            for (int c = 0; c < labels.size(); ++c) {
+            for (int c = 0; c < numClass; ++c) {
                 if (classes[c] > maxClass) {
+//                    Log.d("class", String.valueOf(c));
                     detectedClass = c;
                     maxClass = classes[c];
                 }
@@ -445,14 +447,40 @@ public class YoloV5Classifier implements Classifier {
                                 Math.max(0, yPos - h / 2),
                                 Math.min(bitmap.getWidth() - 1, xPos + w / 2),
                                 Math.min(bitmap.getHeight() - 1, yPos + h / 2));
-                detections.add(new Recognition("" + offset, labels.get(detectedClass),
-                        confidenceInClass, rect, detectedClass));
+                if(detections.size() > 0) {
+                    boolean isSame = false;
+                    for (int t = 0; t < detections.size(); t++) {
+                        Log.d("detections",detections.toString());
+                        final Classifier.Recognition detect = detections.get(t);
+                        if (Math.abs(Math.ceil(detect.getLocation().left) - Math.ceil(rect.left))<5) {
+                            isSame = true;
+                            Log.d("t","same");
+                            if (detect.getConfidence() < confidenceInClass) {
+                                detections.remove(t);
+                                detections.add(t,new Recognition("" + offset, labels.get(detectedClass),
+                                        confidenceInClass, rect, detectedClass));
+                            }
+                            break;
+                        }
+                    }
+                    if(!isSame) {
+                        detections.add(new Recognition("" + offset, labels.get(detectedClass),
+                                confidenceInClass, rect, detectedClass));
+                    }
+                }else{
+                    detections.add(new Recognition("" + offset, labels.get(detectedClass),
+                            confidenceInClass, rect, detectedClass));
+                }
+
             }
+
         }
 
+
         Log.d("YoloV5Classifier", "detect end");
-        final ArrayList<Recognition> recognitions = nms(detections);
-//        final ArrayList<Recognition> recognitions = detections;
+//        final ArrayList<Recognition> recognitions = nms(detections);
+        final ArrayList<Recognition> recognitions = detections;
+        Log.d("detections",recognitions.toString());
         return recognitions;
     }
 
